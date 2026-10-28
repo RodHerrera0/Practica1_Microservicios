@@ -1,5 +1,5 @@
 # compose.yml — SOLUCIÓN del lab (PlayStation Store).
-# Levanta los 3 microservicios con un solo comando: docker compose up --build
+# Levanta los 4 microservicios con un solo comando: docker compose up --build
 #
 # Claves que se enseñan acá:
 #  - services: cada microservicio es un service.
@@ -18,12 +18,19 @@ services:
     environment:
       - CATALOGO_URL=http://catalogo:4001
       - BIBLIOTECA_URL=http://biblioteca:4002
+      - BILLETERA_URL=http://billetera:4003
     depends_on:
       - catalogo
       - biblioteca
+      - billetera
 
   catalogo:
     build: ./catalogo
 
   biblioteca:
     build: ./biblioteca
+
+  billetera:
+    build: ./billetera
+    environment:
+      - SALDO_INICIAL=150

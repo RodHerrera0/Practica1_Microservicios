@@ -37,6 +37,11 @@
   .nav .links a.on{color:var(--ink);}
   .nav .right{margin-left:auto;display:flex;align-items:center;gap:16px;}
   .chip{font-family:var(--mono);font-size:12px;color:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 12px;}
+  .wallet{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:4px 4px 4px 14px;}
+  .wallet .amt{font-weight:800;font-size:14px;}
+  .wallet .lbl{font-size:11.5px;color:var(--muted);}
+  .wallet button{font-family:var(--font);font-size:12px;font-weight:700;color:#fff;background:var(--ps);border:0;border-radius:999px;padding:7px 12px;cursor:pointer;}
+  .wallet button:hover{background:var(--ps-hover);}
   .icon-btn{width:38px;height:38px;border-radius:999px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:17px;border:1px solid var(--line);}
 
   .shell{max-width:1240px;margin:0 auto;padding:0 40px 90px;}
@@ -110,6 +115,7 @@
     padding:14px 18px;min-width:280px;box-shadow:0 18px 50px rgba(0,0,0,.55);
     transform:translateY(20px);opacity:0;transition:transform .28s,opacity .28s;pointer-events:none;}
   .toast.show{transform:translateY(0);opacity:1;}
+  .toast.err{border-left-color:var(--warn);}
   .toast .tk{font-weight:800;font-size:14px;}
   .toast .td{font-size:12.5px;color:var(--muted);margin-top:2px;}
   .toast .flow{font-family:var(--mono);font-size:11px;color:var(--soft);margin-top:5px;}
@@ -139,6 +145,11 @@
   </div>
   <div class="right">
     <span class="chip">microservicios · gateway :8080</span>
+    <div class="wallet" title="Servicio billetera">
+      <span class="lbl">Saldo</span>
+      <span class="amt" id="saldo">—</span>
+      <button onclick="recargar(50)">＋ $50</button>
+    </div>
     <div class="icon-btn" title="Buscar">⌕</div>
     <div class="icon-btn" title="Tu perfil">🙂</div>
   </div>
@@ -178,15 +189,15 @@
 
 <footer>
   <span>PlayStation Store · demo de microservicios — Programación Web · URL</span>
-  <span class="mono">gateway → catalogo :4001 · biblioteca :4002</span>
+  <span class="mono">gateway → catalogo :4001 · biblioteca :4002 · billetera :4003</span>
 </footer>
 
 <div class="toast" id="toast">
-  <span style="font-size:20px;">✓</span>
+  <span style="font-size:20px;" id="toastIcon">✓</span>
   <div>
-    <div class="tk">Añadido a tu biblioteca</div>
+    <div class="tk" id="toastTitle"></div>
     <div class="td" id="toastGame"></div>
-    <div class="flow">gateway → catálogo → biblioteca</div>
+    <div class="flow" id="toastFlow"></div>
   </div>
 </div>
 
@@ -274,10 +285,20 @@
     }).join('');
   }
 
+  async function cargarSaldo(){
+    var r = await fetch('/api/saldo');
+    var d = await r.json();
+    document.getElementById('saldo').textContent = '$' + Number(d.saldo).toFixed(2);
+  }
+
   var toastT;
-  function toast(nombre){
+  function toast(titulo, detalle, flujo, error){
     var t = document.getElementById('toast');
-    document.getElementById('toastGame').textContent = nombre;
+    document.getElementById('toastIcon').textContent = error ? '!' : '✓';
+    document.getElementById('toastTitle').textContent = titulo;
+    document.getElementById('toastGame').textContent = detalle;
+    document.getElementById('toastFlow').textContent = flujo;
+    t.classList.toggle('err', !!error);
     t.classList.add('show');
     clearTimeout(toastT);
     toastT = setTimeout(function(){ t.classList.remove('show'); }, 2600);
@@ -285,14 +306,30 @@
 
   async function comprar(id){
     var r = await fetch('/api/comprar/' + id, { method:'POST' });
+    var g = CAT.find(function(x){ return x.id === id; });
+    var nombre = g ? g.titulo : 'Tu juego';
     if(r.ok){
-      var g = CAT.find(function(x){ return x.id === id; });
-      toast(g ? g.titulo : 'Tu juego');
+      toast('Añadido a tu biblioteca', nombre, 'gateway → catálogo → billetera → biblioteca');
+    } else {
+      var e = await r.json().catch(function(){ return {}; });
+      toast(e.error || 'No se pudo comprar', nombre, 'gateway → catálogo → billetera ✕', true);
     }
+    await cargarSaldo();
     await cargarBiblioteca();
     await cargarCatalogo();
   }
 
+  async function recargar(monto){
+    var r = await fetch('/api/recargar', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ monto: monto })
+    });
+    if(r.ok) toast('Saldo recargado', '+$' + monto, 'gateway → billetera');
+    await cargarSaldo();
+  }
+
+  cargarSaldo();
   cargarBiblioteca().then(cargarCatalogo);
 </script>
 </body>

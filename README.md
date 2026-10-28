@@ -1,7 +1,7 @@
 # PlayStation Store · lab de microservicios con Docker
 
 Lab guiado de la **Clase 22** (Programación Web · URL). Levantamos una tienda de juegos hecha de
-**3 microservicios** con **Docker Compose**, y la vemos en **Docker Desktop**.
+**4 microservicios** con **Docker Compose**, y la vemos en **Docker Desktop**.
 
 ## Qué hay adentro
 ```
@@ -9,6 +9,7 @@ starter-playstation-store/
 ├── gateway/        la ÚNICA puerta (:8080) + la mini web. Enruta y orquesta.
 ├── catalogo/       microservicio: lista de juegos a la venta (datos en memoria)
 ├── biblioteca/     microservicio: los juegos que ya compraste (datos en memoria)
+├── billetera/      microservicio NUEVO: el saldo del usuario (cobrar / recargar)
 ├── compose.yml             solución (el compose completo que funciona)
 └── compose.ejercicio.yml   esqueleto con TODO para llenar en clase
 ```
@@ -20,11 +21,23 @@ memoria) para que el foco sea Docker.
 ```
 navegador  →  gateway (:8080)  →  catalogo  (interno :4001)
                                →  biblioteca (interno :4002)
+                               →  billetera  (interno :4003)
 ```
 Solo el **gateway** se expone al exterior. Los servicios se encuentran entre sí por su **nombre**
 (`catalogo`, `biblioteca`): Docker Compose crea una red interna y resuelve esos nombres solo.
-Al **Comprar**, el gateway le pide el juego al `catalogo` y lo manda a la `biblioteca` → dos
-microservicios colaborando por la red.
+Al **Comprar**, el gateway le pide el juego al `catalogo`, le cobra el precio a la `billetera`
+y lo manda a la `biblioteca` → tres microservicios colaborando por la red. Si el saldo no alcanza,
+la billetera responde `402` y la compra se corta (el juego no llega a la biblioteca).
+
+## Servicio billetera (nuevo)
+| Método | Ruta        | Body            | Qué hace                                   |
+|--------|-------------|-----------------|--------------------------------------------|
+| GET    | `/saldo`    | —               | devuelve `{ saldo }`                       |
+| POST   | `/cobrar`   | `{ "monto": n }`| descuenta; `402` si el saldo no alcanza    |
+| POST   | `/recargar` | `{ "monto": n }`| suma al saldo                              |
+
+El saldo inicial se configura con `SALDO_INICIAL` en el `compose.yml` (por defecto `150`).
+En la web, el saldo aparece arriba a la derecha con un botón **＋ $50** para recargar.
 
 ## Pasos del lab (Docker Desktop ya instalado)
 1. **Verificar Docker**: abrí Docker Desktop (ballena en verde) y corré `docker run hello-world`.
