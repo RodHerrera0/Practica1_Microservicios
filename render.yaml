@@ -1,5 +1,5 @@
 # render.yaml — Blueprint de Render (despliegue en la nube).
-# Crea los 3 microservicios de un solo golpe desde este repo, en el plan FREE.
+# Crea los 4 microservicios de un solo golpe desde este repo, en el plan FREE.
 # Render hace auto-deploy: cada push a main vuelve a desplegar solo.
 #
 # Lo que se enseña acá:
@@ -34,7 +34,19 @@ services:
       - key: SUPABASE_SERVICE_KEY
         sync: false          # lo pega el alumno (service_role key — secreto)
 
-  # Gateway — la única puerta pública: sirve la web y llama a los otros dos.
+  # Billetera — microservicio interno (saldo del usuario). Datos en memoria.
+  - type: web
+    name: ps-billetera
+    runtime: docker
+    dockerfilePath: ./billetera/Dockerfile
+    dockerContext: ./billetera
+    plan: free
+    region: oregon
+    envVars:
+      - key: SALDO_INICIAL
+        value: "150"
+
+  # Gateway — la única puerta pública: sirve la web y llama a los otros tres.
   - type: web
     name: ps-gateway
     runtime: docker
@@ -47,3 +59,5 @@ services:
         sync: false          # la URL pública de ps-catalogo (https://ps-catalogo-XXXX.onrender.com)
       - key: BIBLIOTECA_URL
         sync: false          # la URL pública de ps-biblioteca (https://ps-biblioteca-XXXX.onrender.com)
+      - key: BILLETERA_URL
+        sync: false          # la URL pública de ps-billetera (https://ps-billetera-XXXX.onrender.com)
