@@ -1,0 +1,49 @@
+# render.yaml — Blueprint de Render (despliegue en la nube).
+# Crea los 3 microservicios de un solo golpe desde este repo, en el plan FREE.
+# Render hace auto-deploy: cada push a main vuelve a desplegar solo.
+#
+# Lo que se enseña acá:
+#  - Cada microservicio es un "web service" con su propio Dockerfile → su propia URL pública.
+#  - En el plan free, un servicio NO puede recibir por la red privada → el gateway llama a
+#    catalogo y biblioteca por su URL PÚBLICA (las pega el alumno en las env vars de abajo).
+#    Son las mismas CATALOGO_URL/BIBLIOTECA_URL del compose, pero ahora URLs reales de internet.
+#  - Los secretos (Supabase) van como variables de entorno, NUNCA en el código (sync: false =
+#    Render no los guarda en el repo; los pega el alumno en el panel).
+
+services:
+  # Catálogo — microservicio interno (lista de juegos a la venta). No necesita config.
+  - type: web
+    name: ps-catalogo
+    runtime: docker
+    dockerfilePath: ./catalogo/Dockerfile
+    dockerContext: ./catalogo
+    plan: free
+    region: oregon
+
+  # Biblioteca — microservicio interno (juegos comprados). Guarda en Supabase.
+  - type: web
+    name: ps-biblioteca
+    runtime: docker
+    dockerfilePath: ./biblioteca/Dockerfile
+    dockerContext: ./biblioteca
+    plan: free
+    region: oregon
+    envVars:
+      - key: SUPABASE_URL
+        sync: false          # lo pega el alumno (Project URL de Supabase)
+      - key: SUPABASE_SERVICE_KEY
+        sync: false          # lo pega el alumno (service_role key — secreto)
+
+  # Gateway — la única puerta pública: sirve la web y llama a los otros dos.
+  - type: web
+    name: ps-gateway
+    runtime: docker
+    dockerfilePath: ./gateway/Dockerfile
+    dockerContext: ./gateway
+    plan: free
+    region: oregon
+    envVars:
+      - key: CATALOGO_URL
+        sync: false          # la URL pública de ps-catalogo (https://ps-catalogo-XXXX.onrender.com)
+      - key: BIBLIOTECA_URL
+        sync: false          # la URL pública de ps-biblioteca (https://ps-biblioteca-XXXX.onrender.com)
